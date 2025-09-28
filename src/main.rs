@@ -1,14 +1,25 @@
-mod server;
-mod file_store;
+mod inky;
+use rppal::gpio::Gpio;
+use std::{thread, time::Duration};
 
-use crate::server::router::create_router;
+use crate::inky::{Inky, HEIGHT, WIDTH};
 
 #[tokio::main]
-async fn main() {
-    // build our application with a single route
-    let app = create_router();
+async fn main(){
+    // Pin 18 corresponds to BCM GPIO 18
+    let mut inky = Inky::new();
+    inky.setup_2().await;
+    for y in 0..(HEIGHT - 1) {
+        let c = y / (HEIGHT / 6);
+        for x in 0..(WIDTH - 1) {
+            inky.set_pixel(x, y, c as u8);
+        }
+    }
+    inky.update().await;
 
-    // run our app with hyper, listening globally on port 3000
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    // or y in range(inky.height - 1):
+    // c = y // (inky.height // 6)
+    // for x in range(inky.width - 1):
+    //     inky.set_pixel(x, y, COLOURS[c])
+
 }
