@@ -1,16 +1,8 @@
-use std::time::Duration;
+use std::{path::Path, time::Duration};
 
+use image::{imageops::{self, ColorMap, FilterType}, DynamicImage, GenericImageView, ImageBuffer, Luma, Rgb, Rgba};
 use rppal::{gpio::Gpio, spi::{Bus, Mode, SlaveSelect, Spi}};
 use tokio::time::Instant;
-
-enum Colours {
-    BLACK = 0,
-    WHITE = 1,
-    YELLOW = 3,
-    RED = 4,
-    BLUE = 5,
-    GREEN = 6
-}
 
 const RESET_PIN: u8 = 27;
 const BUSY_PIN: u8 = 17;
@@ -46,6 +38,69 @@ pub const RESOLUTION: (i32, i32) = (800, 480);
 pub const WIDTH: usize = RESOLUTION.0 as usize;
 pub const HEIGHT: usize = RESOLUTION.1 as usize;
 
+#[derive(Clone, Copy)]
+pub enum Colours {
+    BLACK = 0,
+    WHITE = 1,
+    YELLOW = 2,
+    RED = 3,
+    BLUE = 5,
+    GREEN = 6
+}
+
+impl Colours {
+     pub fn as_rgba(self) -> Rgba<u8> {
+        match self {
+            Colours::BLACK   => Rgba([0, 0, 0, 255]),
+            Colours::WHITE   => Rgba([255, 255, 255, 255]),
+            Colours::YELLOW  => Rgba([255, 255, 0, 255]),
+            Colours::RED     => Rgba([255, 0, 0, 255]),
+            Colours::BLUE    => Rgba([0, 0, 255, 255]),
+            Colours::GREEN   => Rgba([0, 255, 0, 255]),
+        }
+    }
+}
+
+struct Palette;
+
+impl ColorMap for Palette {
+    type Color = Rgba<u8>;
+
+    fn index_of(&self, color: &Self::Color) -> usize {
+        match color.0 {
+            [0, 0, 0, 255] => Colours::BLACK as usize,
+            [255, 255, 255, 255] => Colours::WHITE as usize,
+            [255, 255, 0, 255] => Colours::YELLOW as usize,
+            [255, 0, 0, 255] => Colours::RED as usize,
+            [0, 0, 255, 255] => Colours::BLUE as usize,
+            [0, 255, 0, 255] => Colours::GREEN as usize,
+            _ => Colours::BLACK as usize, // Default to black for undefined colors
+        }
+    }
+
+    fn map_color(&self, color: &mut Self::Color) {
+        let idx = self.index_of(color);
+        *color = self.lookup(idx).unwrap_or(Colours::BLACK.as_rgba());
+    }
+    
+    fn lookup(&self, index: usize) -> Option<Self::Color> {
+        let color = match index {
+            0 => Colours::BLACK.as_rgba(),
+            1 => Colours::WHITE.as_rgba(),
+            2 => Colours::YELLOW.as_rgba(),
+            3 => Colours::RED.as_rgba(),
+            5 => Colours::BLUE.as_rgba(),
+            6 => Colours::GREEN.as_rgba(),
+            _ => Rgba([0, 0, 0, 255]), // Default to black for undefined indices
+        };
+        Some(color)
+    }
+    
+    fn has_lookup(&self) -> bool {
+        true
+    }
+}
+
 pub struct Inky {
     reset_pin: rppal::gpio::OutputPin,
     dc_pin: rppal::gpio::OutputPin,
@@ -56,6 +111,9 @@ pub struct Inky {
 }
 
 impl Inky {
+    /*
+    Initialize the new Inky object with the necessary GPIO pins and SPI interface.
+     */
     pub fn new() -> Self {
         let gpio = Gpio::new().unwrap();
         let reset_pin = gpio.get(RESET_PIN).unwrap().into_output();
@@ -77,7 +135,7 @@ impl Inky {
         }
     }
 
-    pub async fn setup_2(&mut self) {
+    pub async fn setup(&mut self) {
         self.reset_pin.set_low();
         tokio::time::sleep(Duration::from_millis(30)).await;
         self.reset_pin.set_high();
@@ -100,9 +158,58 @@ impl Inky {
         self.send_command(EL673_TRES, Some(vec![0x03, 0x20, 0x01, 0xE0])).await;
         self.send_command(EL673_PWS, Some(vec![0x2F])).await;
         self.send_command(EL673_VDCS, Some(vec![0x01])).await;
-
     }
 
+    /*
+    Sets a pixel in the buffer to a given color value (0-6).
+     */
+    pub fn set_pixel(&mut self, x: usize, y: usize, v: u8) {
+        self.buf[y*WIDTH+x] = v & 0x07;
+    }
+
+    pub fn set_image(&mut self) {
+            let img = image::open(&Path::new("input.jpg")).expect("Failed to open image");
+            let img = img.resize(WIDTH as u32, HEIGHT as u32, FilterType::Nearest);
+            let mut img_buf = img.to_rgba8();
+            let cmap = Palette;
+            imageops::dither(&mut img_buf, &cmap);
+
+            let (img_width, img_height) = img_buf.dimensions();
+
+            for y in 0..img_height {
+                for x in 0..img_width {
+                    let pixel = img_buf.get_pixel(x, y);
+                    let colour = cmap.index_of(pixel) as u8;
+                    self.set_pixel(x as usize, y as usize, colour);
+                }
+            }
+        }
+
+    /*
+    Sends the current buffer to the Inky display and updates the screen.
+     */
+    pub async fn show(&mut self) {
+        self.setup().await;
+
+        let packed_buf = Inky::pack_nibbles(&self.buf);
+
+        self.send_command(EL673_DTM1, Some(packed_buf)).await;
+        self.send_command(EL673_PON, None).await;
+        self.busy_wait(Duration::from_millis(300)).await;
+        self.send_command(EL673_BTST2, Some(vec![0x6F, 0x1F, 0x17, 0x49])).await;
+
+        self.send_command(EL673_DRF, Some(vec!(0x00))).await;
+
+        self.busy_wait(Duration::from_secs(32)).await;
+
+        self.send_command(EL673_POF, Some(vec!(0x00))).await;
+
+        self.busy_wait(Duration::from_secs(32)).await;
+    }
+
+    /*
+    Reads the busy input pin and waits until it goes high or the timeout is reached.
+     */
     async fn busy_wait(&self, timeout: Duration) {
         // if the busy pin is high, assume we're not getting a signal from
         // inky and wait the timeout period to be safe.
@@ -120,6 +227,10 @@ impl Inky {
         }
     }
 
+    /*
+    Sends a given command to the Inky display, optionally with data.
+    SPI max transfer size is usually 4096 bytes, so data is sent in chunks.
+     */
     async fn send_command(&mut self, command: u8, data: Option<Vec<u8>>) {
         self.cs_pin.set_low();
         self.dc_pin.set_low();
@@ -158,33 +269,5 @@ impl Inky {
             })
             .collect()
     }
-
-    pub fn set_pixel(&mut self, x: usize, y: usize, v: u8) {
-        self.buf[y*WIDTH+x] = v & 0x07;
-    }
-
-    pub async fn show(&mut self) {
-        println!("Showing image");
-        self.update().await;
-    }
-
-    pub async fn update(&mut self) {
-        println!("Setting up display");
-        self.setup_2().await;
-
-        let packed_buf = Inky::pack_nibbles(&self.buf);
-
-        self.send_command(EL673_DTM1, Some(packed_buf)).await;
-        self.send_command(EL673_PON, None).await;
-        self.busy_wait(Duration::from_millis(300)).await;
-        self.send_command(EL673_BTST2, Some(vec![0x6F, 0x1F, 0x17, 0x49])).await;
-
-        self.send_command(EL673_DRF, Some(vec!(0x00))).await;
-
-        self.busy_wait(Duration::from_secs(32)).await;
-
-        self.send_command(EL673_POF, Some(vec!(0x00))).await;
-
-        self.busy_wait(Duration::from_secs(32)).await;
-    }
 }
+
