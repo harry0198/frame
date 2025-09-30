@@ -1,6 +1,6 @@
 use std::{path::Path, time::Duration};
 
-use image::{imageops::{self, ColorMap, FilterType}, DynamicImage, GenericImageView, ImageBuffer, Luma, Rgb, Rgba};
+use image::{imageops::{self, ColorMap, FilterType}, Rgba};
 use rppal::{gpio::Gpio, spi::{Bus, Mode, SlaveSelect, Spi}};
 use tokio::time::Instant;
 
@@ -8,8 +8,6 @@ const RESET_PIN: u8 = 27;
 const BUSY_PIN: u8 = 17;
 const DC_PIN: u8 = 22;
 
-const MOSI_PIN: u8 = 10;
-const SCLK_PIN: u8 = 11;
 const CS0_PIN: u8 = 8;
 
 const EL673_PSR: u8 = 0x00;
@@ -19,16 +17,13 @@ const EL673_POFS: u8 = 0x03;
 const EL673_PON: u8 = 0x04;
 const EL673_BTST1: u8 = 0x05;
 const EL673_BTST2: u8 = 0x06;
-const EL673_DSLP: u8 = 0x07;
 const EL673_BTST3: u8 = 0x08;
 const EL673_DTM1: u8 = 0x10;
-const EL673_DSP: u8 = 0x11;
 const EL673_DRF: u8 = 0x12;
 const EL673_PLL: u8 = 0x30;
 const EL673_CDI: u8= 0x50;
 const EL673_TCON: u8 = 0x60;
 const EL673_TRES: u8 = 0x61;
-const EL673_REV: u8 = 0x70;
 const EL673_VDCS: u8 = 0x82;
 const EL673_PWS: u8= 0xE3;
 
@@ -63,14 +58,6 @@ impl Colours {
 }
 
 struct Palette;
-
-// Add this helper function for better color distance calculation
-fn color_distance(c1: &Rgba<u8>, c2: &Rgba<u8>) -> f32 {
-    let r_diff = (c1.0[0] as f32 - c2.0[0] as f32) * 0.299;
-    let g_diff = (c1.0[1] as f32 - c2.0[1] as f32) * 0.587;
-    let b_diff = (c1.0[2] as f32 - c2.0[2] as f32) * 0.114;
-    (r_diff * r_diff + g_diff * g_diff + b_diff * b_diff).sqrt()
-}
 
 impl ColorMap for Palette {
     type Color = Rgba<u8>;
@@ -298,5 +285,12 @@ impl Inky {
             })
             .collect()
     }
+}
+
+fn color_distance(c1: &Rgba<u8>, c2: &Rgba<u8>) -> f32 {
+    let r_diff = (c1.0[0] as f32 - c2.0[0] as f32) * 0.299;
+    let g_diff = (c1.0[1] as f32 - c2.0[1] as f32) * 0.587;
+    let b_diff = (c1.0[2] as f32 - c2.0[2] as f32) * 0.114;
+    (r_diff * r_diff + g_diff * g_diff + b_diff * b_diff).sqrt()
 }
 
