@@ -7,8 +7,10 @@ async fn main(){
     // Pin 18 corresponds to BCM GPIO 18
     let mut inky = Inky::new();
     inky.setup().await;
-    inky.set_image();
     
+    let path = std::path::Path::new("input.jpg");
+    inky.set_image(path);
+
     inky.show().await;
 
     // or y in range(inky.height - 1):

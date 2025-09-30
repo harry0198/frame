@@ -51,31 +51,60 @@ pub enum Colours {
 impl Colours {
      pub fn as_rgba(self) -> Rgba<u8> {
         match self {
-            Colours::BLACK   => Rgba([0, 0, 0, 255]),
+       Colours::BLACK   => Rgba([0, 0, 0, 255]),
             Colours::WHITE   => Rgba([255, 255, 255, 255]),
-            Colours::YELLOW  => Rgba([255, 255, 0, 255]),
-            Colours::RED     => Rgba([255, 0, 0, 255]),
-            Colours::BLUE    => Rgba([0, 0, 255, 255]),
-            Colours::GREEN   => Rgba([0, 255, 0, 255]),
+            // More saturated colors
+            Colours::YELLOW  => Rgba([255, 235, 0, 255]),    // Brighter yellow
+            Colours::RED     => Rgba([255, 45, 20, 255]),    // More vibrant red
+            Colours::BLUE    => Rgba([0, 120, 255, 255]),    // More electric blue
+            Colours::GREEN   => Rgba([50, 200, 50, 255]),    // More vivid green
         }
     }
 }
 
 struct Palette;
 
+// Add this helper function for better color distance calculation
+fn color_distance(c1: &Rgba<u8>, c2: &Rgba<u8>) -> f32 {
+    let r_diff = (c1.0[0] as f32 - c2.0[0] as f32) * 0.299;
+    let g_diff = (c1.0[1] as f32 - c2.0[1] as f32) * 0.587;
+    let b_diff = (c1.0[2] as f32 - c2.0[2] as f32) * 0.114;
+    (r_diff * r_diff + g_diff * g_diff + b_diff * b_diff).sqrt()
+}
+
 impl ColorMap for Palette {
     type Color = Rgba<u8>;
 
     fn index_of(&self, color: &Self::Color) -> usize {
-        match color.0 {
-            [0, 0, 0, 255] => Colours::BLACK as usize,
-            [255, 255, 255, 255] => Colours::WHITE as usize,
-            [255, 255, 0, 255] => Colours::YELLOW as usize,
-            [255, 0, 0, 255] => Colours::RED as usize,
-            [0, 0, 255, 255] => Colours::BLUE as usize,
-            [0, 255, 0, 255] => Colours::GREEN as usize,
-            _ => Colours::BLACK as usize, // Default to black for undefined colors
+        let colors = [
+            Colours::BLACK.as_rgba(),
+            Colours::WHITE.as_rgba(),
+            Colours::YELLOW.as_rgba(),
+            Colours::RED.as_rgba(),
+            Colours::BLUE.as_rgba(),
+            Colours::GREEN.as_rgba(),
+        ];
+        
+        let mut min_distance = f32::MAX;
+        let mut best_index = 0;
+        
+        for (i, palette_color) in colors.iter().enumerate() {
+            let distance = color_distance(color, palette_color);
+            if distance < min_distance {
+                min_distance = distance;
+                best_index = match i {
+                    0 => 0, // BLACK
+                    1 => 1, // WHITE  
+                    2 => 2, // YELLOW
+                    3 => 3, // RED
+                    4 => 5, // BLUE (note: skips 4)
+                    5 => 6, // GREEN
+                    _ => 0,
+                };
+            }
         }
+        
+        best_index
     }
 
     fn map_color(&self, color: &mut Self::Color) {
@@ -167,8 +196,8 @@ impl Inky {
         self.buf[y*WIDTH+x] = v & 0x07;
     }
 
-    pub fn set_image(&mut self) {
-            let img = image::open(&Path::new("input.jpg")).expect("Failed to open image");
+    pub fn set_image(&mut self, path: &Path) {
+            let img = image::open(path).expect("Failed to open image");
             let img = img.resize(WIDTH as u32, HEIGHT as u32, FilterType::Nearest);
             let mut img_buf = img.to_rgba8();
             let cmap = Palette;
