@@ -1,6 +1,6 @@
 use std::{path::Path, time::Duration};
 
-use image::{imageops::{self, ColorMap, FilterType}, Rgba};
+use image::{imageops::{self, ColorMap, FilterType},Rgba};
 use rppal::{gpio::Gpio, spi::{Bus, Mode, SlaveSelect, Spi}};
 use tokio::time::Instant;
 
@@ -34,6 +34,7 @@ pub const WIDTH: usize = RESOLUTION.0 as usize;
 pub const HEIGHT: usize = RESOLUTION.1 as usize;
 
 #[derive(Clone, Copy)]
+#[repr(usize)]
 pub enum Colours {
     BLACK = 0,
     WHITE = 1,
@@ -44,15 +45,14 @@ pub enum Colours {
 }
 
 impl Colours {
-     pub fn as_rgba(self) -> Rgba<u8> {
+    pub fn as_rgba(self) -> Rgba<u8> {
         match self {
-       Colours::BLACK   => Rgba([0, 0, 0, 255]),
-            Colours::WHITE   => Rgba([255, 255, 255, 255]),
-            // More saturated colors
-            Colours::YELLOW  => Rgba([255, 235, 0, 255]),    // Brighter yellow
-            Colours::RED     => Rgba([255, 45, 20, 255]),    // More vibrant red
-            Colours::BLUE    => Rgba([0, 120, 255, 255]),    // More electric blue
-            Colours::GREEN   => Rgba([50, 200, 50, 255]),    // More vivid green
+            Colours::BLACK  => Rgba([0, 0, 0, 255]),
+            Colours::WHITE  => Rgba([255, 255, 255, 255]),
+            Colours::YELLOW => Rgba([255, 242, 0, 255]),
+            Colours::RED    => Rgba([255, 0, 0, 255]),
+            Colours::BLUE   => Rgba([0, 0, 217, 255]),
+            Colours::GREEN  => Rgba([0, 228, 0, 255]),
         }
     }
 }
@@ -80,13 +80,13 @@ impl ColorMap for Palette {
             if distance < min_distance {
                 min_distance = distance;
                 best_index = match i {
-                    0 => 0, // BLACK
-                    1 => 1, // WHITE  
-                    2 => 2, // YELLOW
-                    3 => 3, // RED
-                    4 => 5, // BLUE (note: skips 4)
-                    5 => 6, // GREEN
-                    _ => 0,
+                    0 => Colours::BLACK as usize,
+                    1 => Colours::WHITE as usize,
+                    2 => Colours::YELLOW as usize,
+                    3 => Colours::RED as usize,
+                    4 => Colours::BLUE as usize,
+                    5 => Colours::GREEN as usize,
+                    _ => Colours::BLACK as usize,
                 };
             }
         }
@@ -107,7 +107,7 @@ impl ColorMap for Palette {
             3 => Colours::RED.as_rgba(),
             5 => Colours::BLUE.as_rgba(),
             6 => Colours::GREEN.as_rgba(),
-            _ => Rgba([0, 0, 0, 255]), // Default to black for undefined indices
+            _ => Colours::BLACK.as_rgba()
         };
         Some(color)
     }
@@ -182,24 +182,32 @@ impl Inky {
     pub fn set_pixel(&mut self, x: usize, y: usize, v: u8) {
         self.buf[y*WIDTH+x] = v & 0x07;
     }
+    
 
-    pub fn set_image(&mut self, path: &Path) {
-            let img = image::open(path).expect("Failed to open image");
-            let img = img.resize(WIDTH as u32, HEIGHT as u32, FilterType::Nearest);
-            let mut img_buf = img.to_rgba8();
-            let cmap = Palette;
+    /* Sets the entire canvas as an image. Forces size to be WIDTH & HEIGHT.
+        Provides options for dithering using Floyd-Steinberg algorithm which visually improves
+        the appearance of images with limited color palettes.
+     */
+    pub fn set_image(&mut self, path: &Path, dither: bool) {
+        let img = image::open(path).expect("Failed to open image");
+        let img = img.resize_exact(WIDTH as u32, HEIGHT as u32, FilterType::Lanczos3);
+        let mut img_buf = img.to_rgba8();
+        let cmap = Palette;
+        
+        if dither {
             imageops::dither(&mut img_buf, &cmap);
+        }
 
-            let (img_width, img_height) = img_buf.dimensions();
+        let (img_width, img_height) = img_buf.dimensions();
 
-            for y in 0..img_height {
-                for x in 0..img_width {
-                    let pixel = img_buf.get_pixel(x, y);
-                    let colour = cmap.index_of(pixel) as u8;
-                    self.set_pixel(x as usize, y as usize, colour);
-                }
+        for y in 0..img_height {
+            for x in 0..img_width {
+                let pixel = img_buf.get_pixel(x, y);
+                let colour = cmap.index_of(pixel) as u8;
+                self.set_pixel(x as usize, y as usize, colour);
             }
         }
+    }
 
     /*
     Sends the current buffer to the Inky display and updates the screen.
@@ -258,7 +266,7 @@ impl Inky {
             self.dc_pin.set_high();
             
             // Split large data into chunks to avoid "Message too long" error
-            const CHUNK_SIZE: usize = 4096; // 4KB chunks
+            const CHUNK_SIZE: usize = 4096;
             for chunk in data.chunks(CHUNK_SIZE) {
                 
                 match self.spi.write(chunk) {
@@ -277,7 +285,7 @@ impl Inky {
 
     fn pack_nibbles(input: &[u8]) -> Vec<u8> {
         input
-            .chunks(2)                       // take two elements at a time
+            .chunks(2)
             .map(|pair| {
                 let high = (pair[0] << 4) & 0xF0;
                 let low = if pair.len() > 1 { pair[1] & 0x0F } else { 0 };
@@ -287,10 +295,10 @@ impl Inky {
     }
 }
 
+// Calculate the distance between two colors in RGB space.
 fn color_distance(c1: &Rgba<u8>, c2: &Rgba<u8>) -> f32 {
-    let r_diff = (c1.0[0] as f32 - c2.0[0] as f32) * 0.299;
-    let g_diff = (c1.0[1] as f32 - c2.0[1] as f32) * 0.587;
-    let b_diff = (c1.0[2] as f32 - c2.0[2] as f32) * 0.114;
-    (r_diff * r_diff + g_diff * g_diff + b_diff * b_diff).sqrt()
+    let r = c1.0[0] as f32 - c2.0[0] as f32;
+    let g = c1.0[1] as f32 - c2.0[1] as f32;
+    let b = c1.0[2] as f32 - c2.0[2] as f32;
+    (r * r + g * g + b * b).sqrt()
 }
-
