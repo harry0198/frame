@@ -1,0 +1,10 @@
+[package]
+name = "frame"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+image = "0.25.8"
+inky = "0.1.0"
+rppal = "0.22.1"
+tokio = { version = "1.47.1", features = ["macros", "rt-multi-thread", "fs", "io-util", "time"] }
