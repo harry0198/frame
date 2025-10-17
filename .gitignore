@@ -27,7 +27,9 @@ target
 /contentModel.xml
 /modules.xml
 /projectSettingsUpdater.xml
-/backend/Imager/bin/** */
+/backend/Imager/bin**
+/backend/.idea**
+/backend/Imager/obj**
 # Editor-based HTTP Client requests
 /httpRequests/
 # Datasource local storage ignored files
