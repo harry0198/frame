@@ -30,6 +30,7 @@ target
 /backend/Imager/bin**
 /backend/.idea**
 /backend/Imager/obj**
+/backend/Imager/uploads**
 # Editor-based HTTP Client requests
 /httpRequests/
 # Datasource local storage ignored files

@@ -13,7 +13,8 @@ internal static class GetImagesEndpoint
             var response = Directory.GetFiles(imagerOptions.Value.Directory).Select(path => new ImageResponse
             {
                 FilePath = path,
-                Url = $"/images/{Path.GetFileNameWithoutExtension(path)}"
+                Url = $"/static/images/{Path.GetFileName(path)}",
+                FileNameWithExtension = Path.GetFileName(path)
             });
             
             return Results.Ok(response);
