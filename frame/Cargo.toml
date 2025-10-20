@@ -6,5 +6,8 @@ edition = "2024"
 [dependencies]
 image = "0.25.8"
 inky = "0.1.0"
+rand = "0.9.2"
+reqwest = { version = "0.12.24", features = ["json"] }
 rppal = "0.22.1"
+serde = { version = "1.0.228", features = ["derive"] }
 tokio = { version = "1.47.1", features = ["macros", "rt-multi-thread", "fs", "io-util", "time"] }
