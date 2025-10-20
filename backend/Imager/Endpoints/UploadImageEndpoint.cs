@@ -1,4 +1,5 @@
 using Imager.Common;
+using Imager.Responses;
 using Microsoft.Extensions.Options;
 
 namespace Imager.Endpoints;
@@ -22,7 +23,7 @@ internal static class UploadImageEndpoint
             await using var stream = File.Create(savedPath);
             await file.CopyToAsync(stream);
 
-            return Results.Created($"/images/{newFileName}", new { fileName = newFileName, size = file.Length });
+            return Results.Created($"/images/{newFileName}", new ImageUploadResponse(FileName: newFileName, Size: file.Length));
         }).DisableAntiforgery();
     }
 }

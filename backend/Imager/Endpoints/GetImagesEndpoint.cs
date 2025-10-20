@@ -10,12 +10,12 @@ internal static class GetImagesEndpoint
     {
         app.MapGet("/images", (IOptions<ImagerOptions> imagerOptions) =>
         {
-            var response = Directory.GetFiles(imagerOptions.Value.Directory).Select(path => new ImageResponse
-            {
-                FilePath = path,
-                Url = $"/static/images/{Path.GetFileName(path)}",
-                FileNameWithExtension = Path.GetFileName(path)
-            });
+            var response = Directory.GetFiles(imagerOptions.Value.Directory).Select(path => new ImageResponse(
+            
+                FilePath: path,
+                Url: $"/static/images/{Path.GetFileName(path)}",
+                FileNameWithExtension: Path.GetFileName(path)
+            ));
             
             return Results.Ok(response);
         });

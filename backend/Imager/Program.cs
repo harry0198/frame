@@ -6,8 +6,6 @@ using Microsoft.Extensions.Options;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
 builder.Services.Configure<ImagerOptions>(builder.Configuration.GetSection(nameof(ImagerOptions)));
 
 builder.Services.AddCors(opts =>
@@ -21,15 +19,14 @@ builder.Services.AddCors(opts =>
     });
 });
 
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.TypeInfoResolverChain.Insert(0, JsonContext.Default);
+});
+
 var app = builder.Build();
 
 app.UseCors("AllowAll");
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
 
 app.UseHttpsRedirection();
 
