@@ -1,0 +1,16 @@
+  GNU nano 8.4                                     /etc/systemd/system/imager.service *                                             
+[Unit]
+Description=Frame image server software
+After=network.target
+
+[Service]
+ExecStart=/home/harrydrummond/software/Imager
+Restart=always
+Type=notify
+User=harrydrummond
+WorkingDirectory=/home/harrydrummond/software
+PrivateNetwork=no
+
+[Install]
+WantedBy=multi-user.target
+

@@ -11,10 +11,11 @@ use crate::inky::Inky;
 async fn main(){
 
     let image = fetch_image_from_api().await;
+    println!("Fetched image path: {}", image);
     let mut inky = Inky::new();
     inky.setup().await;
     
-    let path = std::path::Path::new("input.jpg");
+    let path = std::path::Path::new(&image);
     inky.set_image(path, true);
 
     inky.show().await;

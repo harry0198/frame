@@ -1,0 +1,15 @@
+[Unit]
+Description=Frame firmware
+After=imager.service
+Requires=imager.service
+
+[Service]
+ExecStart=/home/harrydrummond/firmware/frame
+Restart=on-failure
+User=harrydrummond
+Environment=API_BASE_URL=http://localhost:5000
+WorkingDirectory=/home/harrydrummond/firmware
+
+[Install]
+WantedBy=multi-user.target
+

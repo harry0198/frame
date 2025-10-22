@@ -24,6 +24,8 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.TypeInfoResolverChain.Insert(0, JsonContext.Default);
 });
 
+builder.Host.UseSystemd();
+
 var app = builder.Build();
 
 app.UseCors("AllowAll");
