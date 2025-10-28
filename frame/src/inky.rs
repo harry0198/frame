@@ -5,7 +5,7 @@ use rppal::{gpio::Gpio, spi::{Bus, Mode, SlaveSelect, Spi}};
 use tokio::time::Instant;
 
 const RESET_PIN: u8 = 27;
-const BUSY_PIN: u8 = 17;
+const BUSY_PIN: u8 = 23;
 const DC_PIN: u8 = 22;
 
 const CS0_PIN: u8 = 8;
