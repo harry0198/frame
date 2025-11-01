@@ -1,8 +1,8 @@
-using Imager.Common;
+using Imager.Api.Common;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
-namespace Imager.Endpoints;
+namespace Imager.Api.Endpoints;
 
 internal static class DeleteImageEndpoint
 {

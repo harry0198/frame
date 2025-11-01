@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
-using Imager.Responses;
+using Imager.Api.Responses;
 
-namespace Imager.Common;
+namespace Imager.Api.Common;
 
 [JsonSerializable(typeof(ImageUploadResponse))]
 [JsonSerializable(typeof(ImageResponse))]

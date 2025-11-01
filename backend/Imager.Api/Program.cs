@@ -1,5 +1,5 @@
-using Imager.Common;
-using Imager.Endpoints;
+using Imager.Api.Common;
+using Imager.Api.Endpoints;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 

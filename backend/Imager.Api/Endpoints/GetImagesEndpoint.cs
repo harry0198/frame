@@ -1,8 +1,8 @@
-using Imager.Common;
-using Imager.Responses;
+using Imager.Api.Common;
+using Imager.Api.Responses;
 using Microsoft.Extensions.Options;
 
-namespace Imager.Endpoints;
+namespace Imager.Api.Endpoints;
 
 internal static class GetImagesEndpoint
 {

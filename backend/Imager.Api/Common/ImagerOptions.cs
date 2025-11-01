@@ -1,9 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Imager.Common;
+namespace Imager.Api.Common;
 
 public class ImagerOptions
 {
     [Required]
-    public string Directory { get; set; }
+    public required string Directory { get; init; }
 }
