@@ -41,6 +41,7 @@ app.UseStaticFiles(new StaticFileOptions
     FileProvider = new PhysicalFileProvider(options.Directory),
     RequestPath = "/static/images"
 });
+app.MapUpdateInkyEndpoint();
 app.MapGetImagesEndpoint();
 app.MapUploadImageEndpoint();
 app.MapDeleteImageEndpoint();
