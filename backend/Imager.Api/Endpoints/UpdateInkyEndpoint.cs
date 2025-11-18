@@ -25,15 +25,37 @@ internal static class UpdateInkyEndpoint
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
             };
-
+            
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
             timeoutCts.CancelAfter(imagerOptions.Value.InkyTimeout);
 
             using var proc = Process.Start(psi);
             if (proc is null)
             {
+                Console.WriteLine("Failed to update");
                 return Results.Problem("Failed to update inky display");
             }
+            
+            // Log STDOUT
+            proc.OutputDataReceived += (s, e) =>
+            {
+                if (e.Data != null)
+                    Console.WriteLine($"[INKY OUT] {e.Data}");
+            };
+
+            // Log STDERR
+            proc.ErrorDataReceived += (s, e) =>
+            {
+                if (e.Data != null)
+                    Console.WriteLine($"[INKY ERR] {e.Data}");
+            };
+
+            if (!proc.Start())
+            {
+                Console.WriteLine("Failed to update");
+                return Results.Problem("Failed to update inky display");
+            }
+            
             await proc.WaitForExitAsync(cancellation);
             
             return proc.ExitCode == 0
