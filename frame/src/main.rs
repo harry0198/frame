@@ -1,6 +1,6 @@
 mod inky;
 
-use std::env;
+use std::env::{self, args};
 use rand::Rng;
 use serde::Deserialize;
 use reqwest;
@@ -9,8 +9,15 @@ use crate::inky::Inky;
 
 #[tokio::main]
 async fn main(){
+    let args = args().skip(1).collect::<Vec<_>>();
 
-    let image = fetch_image_from_api().await;
+    let image: String;
+    if args.is_empty() {
+        image = fetch_image_from_api().await;
+    } else {
+        image = args[1].clone();
+    }
+    
     println!("Fetched image path: {}", image);
     let mut inky = Inky::new();
     inky.setup().await;

@@ -1,9 +1,11 @@
-import { deleteImage, getImages } from "@/apis/api";
+import { deleteImage, displayImageNow, getImages } from "@/apis/api";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense } from "react";
 import { ImageGridSkeleton } from "./ImageGridSkeleton";
 import { Button } from "./ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
+import { ComputerIcon } from "lucide-react";
+import { toast } from "sonner";
 
 
 export const ImageGrid = () => {
@@ -23,6 +25,19 @@ const ImageGridItems = () => {
         queryFn: getImages
     });
 
+    const displayNowMutation = useMutation({
+        mutationFn: async (imageId: string) => {
+            // Call your API to display the image now
+            await displayImageNow(imageId);
+        },
+        onError: (error) => {
+            toast.error("Failed to display image on frame.", { description: (error as Error).message });
+        },
+        onSuccess: () => {
+            toast.success("Image will be displayed on the frame shortly.");
+        }
+    })
+
     const deleteImageMutation = useMutation({
         mutationFn: async (imageId: string) => {
             // Call your API to delete the image
@@ -33,7 +48,7 @@ const ImageGridItems = () => {
             queryClient.invalidateQueries({ queryKey: ['images'] });
         },
         onError: (error) => {
-            console.error("Error deleting image:", error);
+            toast.error("Failed to delete image", { description: (error as Error).message });
         }
     });
 
@@ -56,6 +71,25 @@ const ImageGridItems = () => {
                         <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction onClick={() => deleteImageMutation.mutate(image.fileNameWithExtension)}>Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="outline" className="absolute top-2 left-2"><ComputerIcon /></Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Show this on the frame now?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This will immediately display this image on the frame. It will
+                                be replaced the next time the daily update occurs.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => displayNowMutation.mutate(image.filePath)}>Show</AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>

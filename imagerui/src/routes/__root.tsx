@@ -7,6 +7,7 @@ import { ThemeProvider } from '@/components/shared/ThemeProvider'
 import Aurora from '@/components/shared/Aurora'
 import { Navbar } from '@/components/Navbar'
 import { Footbar } from '@/components/Footbar'
+import { Toaster } from 'sonner'
 
 interface MyRouterContext {
   queryClient: QueryClient
@@ -27,6 +28,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       <QueryClientProvider client={new QueryClient()}>
         <Outlet />
         </QueryClientProvider>
+        <Toaster />
         <TanStackDevtools
           config={{
             position: 'bottom-right',
